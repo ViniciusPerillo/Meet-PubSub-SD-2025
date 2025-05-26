@@ -188,12 +188,12 @@ class User:
 
                 if status:
                     self._connectPub(ip)
-                    print(f'{datetime.now().strftime("%d/%m/%Y, %H:%M")}: {username.decode('utf-8')} entrou na sala')
+                    print(f'{datetime.now().strftime("%d/%m/%Y, %H:%M")}: {username.decode("utf-8")} entrou na sala')
                 else:
                     self._disconnectPub(ip)
-                    print(f'{datetime.now().strftime("%d/%m/%Y, %H:%M")}: {username.decode('utf-8')} saiu da sala')
+                    print(f'{datetime.now().strftime("%d/%m/%Y, %H:%M")}: {username.decode("utf-8")} saiu da sala')
             elif topic == b'text':
-                print(f'{datetime.now().strftime("%d/%m/%Y, %H:%M")} - {username.decode('utf-8')}:  {msg.decode('utf-8')}')
+                print(f'{datetime.now().strftime("%d/%m/%Y, %H:%M")} - {username.decode("utf-8")}:  {msg.decode("utf-8")}')
 
             
 
