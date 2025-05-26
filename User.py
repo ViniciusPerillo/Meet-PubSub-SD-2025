@@ -14,7 +14,7 @@ ROUTER_PORT= 6666
 class InvalidInviteCode(Exception):
     pass
 
-class HostTimeOut(Exception):
+class WrongPassword(Exception):
     pass
 
 class User:
@@ -103,18 +103,22 @@ class User:
         dealer: zmq.Socket = self.context.socket(zmq.DEALER)
         dealer.setsockopt(zmq.IPV6, 1)
         dealer.setsockopt(zmq.LINGER, 0)  
-        dealer.setsockopt(zmq.RCVTIMEO, 3000)
+        #daler.setsockopt(zmq.RCVTIMEO, 3000)
         dealer.connect(f'tcp://[{ip}]:{ROUTER_PORT}') 
         
         bytes_ip = self.ipv6.encode('utf-8')
+        dealer.setsockopt(zmq.IDENTITY, bytes_ip)
         bytes_username = self.username.encode('utf-8')
         bytes_password = password.encode('utf-8')
 
-        try:
-            dealer.send_multipart([bytes_ip, bytes_username, bytes_password])
-            _, _, list_ips = dealer.recv_multipart()
-        except zmq.Again:
-            raise HostTimeOut
+
+        dealer.send_multipart([bytes_ip, bytes_username, bytes_password])
+
+        _, _, bytes_list_ips = dealer.recv_multipart()
+        list_ips = bytes_list_ips.decode('utf-8')
+
+        if list_ips == 'wrong':
+            raise WrongPassword
         else: 
             with self.lock:
                 self.peers_addr = [self.ipv6] 
@@ -137,7 +141,7 @@ class User:
 
         try:
             self._getHost(ip, password)
-        except HostTimeOut:
+        except WrongPassword:
             pass
         else:
             self.room = room
@@ -146,8 +150,8 @@ class User:
             self._create_invite_code()
             threading.Thread(self._inviteListener, daemon=True).start()
 
-        for ip in self.peers_addr[1:]:
-            self._connectPub(ip)
+            for ip in self.peers_addr[1:]:
+                self._connectPub(ip)
 
     def exitRoom(self):
         for ip in self.peers_addr[1:]:
@@ -193,6 +197,8 @@ class User:
                 else:
                     self._disconnectPub(ip)
                     print(f'{datetime.now().strftime("%d/%m/%Y, %H:%M")}: {username.decode('utf-8')} saiu da sala')
+            elif topic == b'text':
+                print(f'{datetime.now().strftime("%d/%m/%Y, %H:%M")} - {username.decode('utf-8')}:  {msg.decode('utf-8')}')
 
             
 

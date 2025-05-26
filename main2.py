@@ -3,7 +3,7 @@ from User import User
 
 user = User('dell')
 
-user.joinRoom('3hCrJWK32xwQFXwhsvAdFcXgyxYwRncnu6eNdS8EFuuW', '123')
+user.joinRoom('3hCrJWK32xwQFXwhsvAdFcXgyxYwRncnu6eNdS8EFm7k', '123')
 
 try: 
     print(user.invite)
