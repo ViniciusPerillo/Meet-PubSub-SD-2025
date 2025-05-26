@@ -4,6 +4,7 @@ import random
 import base58
 import hashlib
 from datetime import datetime
+from time import sleep
 
 from utils import *
 
@@ -56,7 +57,9 @@ class User:
     
 
     def _create_invite_code(self):
-        self.room = random.randint(0, 65535) if self.room == None else self.room
+        #self.room = random.randint(0, 65535) if self.room == None else self.room
+        self.room = 1111 if self.room == None else self.room
+        
         ip_bin = convert_ipv6_str_to_bin(self.ipv6)
         invite = ip_bin<<128 | self.room
 
@@ -80,16 +83,19 @@ class User:
         router.bind(f'tcp://[::]:{ROUTER_PORT}')
 
         while self.on_room:
-            bytes_ip, bytes_username, bytes_password = router.recv_multipart()
+            dealer_id, bytes_ip, bytes_username, bytes_password = router.recv_multipart()
             ip = bytes_ip.decode('utf-8')
             password = bytes_password.decode('utf-8')
 
             if password == self.password:
-                router.send_multipart[ip, b'', str(self.peers_addr)[1:-1].encode('utf-8')]
+                bytes_ips = str(self.peers_addr)[1:-1].replace("'","").encode('utf-8')
+                router.send_multipart([dealer_id, b'', b'', bytes_ips])
                 with self.lock:
                     self.peers_addr.append(ip)
 
-            self.publisher.send_multipart([b'status', bytes_username, (ip + '1').encode('utf-8')])
+                self.publisher.send_multipart([b'status', bytes_username, (ip + '1').encode('utf-8')])
+            else:
+                router.send_multipart([b'', b'', b'wrong'])
         
         router.close(1)
 
