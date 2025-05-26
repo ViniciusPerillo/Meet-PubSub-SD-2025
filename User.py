@@ -77,7 +77,6 @@ class User:
         return (ip, room)
             
     def _inviteListener(self):
-        print('cu')
         router: zmq.Socket = self.context.socket(zmq.ROUTER)
         router.setsockopt(zmq.IPV6, 1)
         router.bind(f'tcp://[::]:{ROUTER_PORT}')
@@ -146,12 +145,8 @@ class User:
         else:
             self.room = room
             self.on_room = True
-            self.peers = len(self.peers_addr)
             self._create_invite_code()
-            threading.Thread(self._inviteListener, daemon=True).start()
-
-            for ip in self.peers_addr[1:]:
-                self._connectPub(ip)
+            threading.Thread(target=self._inviteListener, daemon=True).start()
 
     def exitRoom(self):
         for ip in self.peers_addr[1:]:
