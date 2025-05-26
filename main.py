@@ -1,10 +1,12 @@
 from User import User
 
-
 user = User('ifood')
 
 user.createRoom('123')
 
-print(user.invite)
+try: 
+    print(user.invite)
 
-user.listeningPubs()
+    user.listeningPubs()
+except KeyboardInterrupt:
+    user.exitRoom()

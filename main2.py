@@ -5,6 +5,9 @@ user = User('dell')
 
 user.joinRoom('3hCrJWK32xwQFXwhsvAdFcXgyxYwRncnu6eNdS8EFuuW', '123')
 
-print(user.invite)
+try: 
+    print(user.invite)
 
-user.listeningPubs()
+    user.listeningPubs()
+except KeyboardInterrupt:
+    user.exitRoom()

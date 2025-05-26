@@ -44,13 +44,16 @@ class User:
 
         self.ipv6 = get_ipv6()
         self.lock = threading.Lock()
-        self.on_room = False
         self.username = username
+
         self.peers_addr = []
         self.peers = 0
         self.room = None
+        self.on_room = False
         self.invite = ''
         self.password = ''
+
+    
 
     def _create_invite_code(self):
         self.room = random.randint(0, 65535) if self.room == None else self.room
@@ -148,8 +151,9 @@ class User:
 
         self.peers_addr.pop()
         self.peers -= 1
-        self.room == None
-        self.invite == ''
+        self.room = None
+        self.on_room = False
+        self.invite = ''
         self.password = ''
 
     def _connectPub(self, ip: str):
