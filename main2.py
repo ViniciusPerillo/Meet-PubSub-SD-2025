@@ -1,9 +1,9 @@
 from User import User
 
 
-user = User('ifood')
+user = User('dell')
 
-user.createRoom('123')
+user.joinRoom('')
 
 print(user.invite)
 
