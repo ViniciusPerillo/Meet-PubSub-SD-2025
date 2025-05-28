@@ -18,7 +18,7 @@ class InvalidInviteCode(Exception):
 class WrongPassword(Exception):
     pass
 
-class User:
+class Peer:
     context: zmq.Context
     publisher: zmq.Socket
     subscriber: zmq.Socket
@@ -97,9 +97,7 @@ class User:
             if password == self.password:
                 bytes_ips = str(self.peers_addr)[1:-1].replace("'","").encode('utf-8')
                 router.send_multipart([dealer_id, b'', b'', bytes_ips])
-                with self.lock:
-                    self.peers_addr.append(ip)
-
+                self._connectPub(ip)
                 self.publisher.send_multipart([b'status', bytes_username, (ip + '1').encode('utf-8')])
             else:
                 router.send_multipart([b'', b'', b'wrong'])

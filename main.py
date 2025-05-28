@@ -1,10 +1,10 @@
-from user import User
+from peer import Peer
 import sys
 
 def main():
     argv = sys.argv
 
-    user = User(argv[1])
+    user = Peer(argv[1])
 
     if '-c' in argv:
         user.createRoom(argv[3])

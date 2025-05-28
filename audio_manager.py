@@ -13,7 +13,7 @@ import weakref
 # Configurações
 SAMPLE_RATE = 16000
 CHUNK = 320
-DTYPE  = 'float32'
+DTYPE  = 'int16'
 CHANNELS = 1
 
 class AudioManager():
@@ -36,31 +36,21 @@ class AudioManager():
         return self.encoder.encode(audio.tobytes())
 
     def decode(self, data: bytes) -> np.ndarray:
-        try:
-            decoded_bytes = self.decoder.decode(bytearray(data))
-            audio = np.frombuffer(decoded_bytes, dtype=np.float32)
+        decoded_bytes = self.decoder.decode(bytearray(data))
+        audio = np.frombuffer(decoded_bytes, dtype=DTYPE)
+        
+        # if audio.size != CHUNK * CHANNELS:
+        #     # Corrigir tamanho com padding ou truncamento
+        #     if audio.size < CHUNK * CHANNELS:
+        #         pad = np.zeros(CHUNK * CHANNELS - audio.size, dtype=np.float32)
+        #         audio = np.concatenate([audio, pad])
+        #     else:
+        #         audio = audio[:CHUNK * CHANNELS]
 
-            # Tamanho inesperado: pad ou truncate
-            if audio.size < CHUNK * CHANNELS:
-                pad = np.zeros(CHUNK * CHANNELS - audio.size, dtype=np.float32)
-                audio = np.concatenate([audio, pad])
-            elif audio.size > CHUNK * CHANNELS:
-                audio = audio[:CHUNK * CHANNELS]
-
-            # Formatar corretamente e garantir dados válidos
-            audio = audio.reshape((CHUNK, CHANNELS))
-            if np.any(np.isnan(audio)) or np.any(np.isinf(audio)):
-                raise ValueError("Áudio contém NaN ou Inf")
-            
-            return audio
-
-        except Exception as e:
-            print(f"[Erro decode] Ignorando pacote de áudio corrompido: {e}")
-            return np.zeros((CHUNK, CHANNELS), dtype=np.float32)
+        return audio
 
 
     def setup_audio(self):
-        # Configura captura de áudio
         self.input_stream = sd.InputStream(
             samplerate=SAMPLE_RATE,
             blocksize=CHUNK,
@@ -69,7 +59,6 @@ class AudioManager():
             callback=self.input_callback
         )
         
-        # Configura reprodução de áudio
         self.output_stream = sd.OutputStream(
             samplerate=SAMPLE_RATE,
             blocksize=CHUNK,
@@ -90,20 +79,17 @@ class AudioManager():
     def input_callback(self, indata, frames, time, status):
         """Callback de captura de áudio"""
         self.user().publisher.send_multipart([b'audio', self.user().username.encode('utf-8'), self.encode(indata.copy())])
-        
-        # # Adiciona áudio local na mixagem (opcional)
-        # self.audio_queue.put(indata.copy())
 
     def output_callback(self, outdata, frames, time, status):
         """Callback de reprodução de áudio com mixagem"""
         try:
-            mix = np.zeros((CHUNK, CHANNELS), dtype=DTYPE)
+            mix = np.zeros((frames, CHANNELS), dtype=np.float32)
             count = 0
             
             # Processa todos os chunks disponíveis
             while True:
-                chunk = self.audio_queue.get_nowait()
-                mix += chunk[:CHUNK]  # Garante tamanho correto
+                chunk = self.audio_queue.get_nowait().reshape((frames, CHANNELS))
+                mix += chunk[:frames]  # Garante tamanho correto
                 count += 1
         except queue.Empty:
             pass
@@ -111,9 +97,9 @@ class AudioManager():
         # Prevenção de clipping
         if count > 0:
             mix /= count
-            mix = np.clip(mix, -1.0, 1.0)
+            mix = np.clip(mix, -1.0, 1.0)  * 32767
         
-        outdata[:] = mix
+        outdata[:] = mix.astype(DTYPE)
 
     def receive_audio(self, data: bytes):
         audio = self.decode(data)
