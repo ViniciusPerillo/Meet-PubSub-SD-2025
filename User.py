@@ -37,8 +37,10 @@ class User:
         self.publisher = self.context.socket(zmq.PUB)
         self.publisher.setsockopt(zmq.IPV6, 1)
         self.publisher.bind(f'tcp://[::]:{PUB_PORT}')
+        self.publisher.setsockopt(zmq.SNDHWM, 1)
         self.subscriber = self.context.socket(zmq.SUB)
         self.subscriber.setsockopt(zmq.IPV6, 1)
+        self.subscriber.setsockopt(zmq.RCVHWM, 1)
         self.subscriber.setsockopt_string(zmq.SUBSCRIBE, 'status')
         self.subscriber.setsockopt_string(zmq.SUBSCRIBE, 'text')
         self.subscriber.setsockopt_string(zmq.SUBSCRIBE, 'audio')
@@ -136,6 +138,7 @@ class User:
     def _enterRoom(self):
         self.on_room = True
         self._create_invite_code()
+        sleep(0.5)
         threading.Thread(target=self._inviteListener, daemon=True).start()
         self.audio_manager.setup_audio()
 

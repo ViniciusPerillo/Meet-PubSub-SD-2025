@@ -36,18 +36,27 @@ class AudioManager():
         return self.encoder.encode(audio.tobytes())
 
     def decode(self, data: bytes) -> np.ndarray:
-        decoded_bytes = self.decoder.decode(bytearray(data))
-        audio = np.frombuffer(decoded_bytes, dtype=np.float32)
-        
-        if audio.size != CHUNK * CHANNELS:
-            # Corrigir tamanho com padding ou truncamento
+        try:
+            decoded_bytes = self.decoder.decode(bytearray(data))
+            audio = np.frombuffer(decoded_bytes, dtype=np.float32)
+
+            # Tamanho inesperado: pad ou truncate
             if audio.size < CHUNK * CHANNELS:
                 pad = np.zeros(CHUNK * CHANNELS - audio.size, dtype=np.float32)
                 audio = np.concatenate([audio, pad])
-            else:
+            elif audio.size > CHUNK * CHANNELS:
                 audio = audio[:CHUNK * CHANNELS]
 
-        return audio.reshape((CHUNK, CHANNELS))
+            # Formatar corretamente e garantir dados válidos
+            audio = audio.reshape((CHUNK, CHANNELS))
+            if np.any(np.isnan(audio)) or np.any(np.isinf(audio)):
+                raise ValueError("Áudio contém NaN ou Inf")
+            
+            return audio
+
+        except Exception as e:
+            print(f"[Erro decode] Ignorando pacote de áudio corrompido: {e}")
+            return np.zeros((CHUNK, CHANNELS), dtype=np.float32)
 
 
     def setup_audio(self):
