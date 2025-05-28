@@ -9,7 +9,7 @@ def main():
     if '-c' in argv:
         user.createRoom(argv[3])
     elif '-e' in argv:
-        user.joinRoom('3hCrJWK32xwQFXwhsvAdFcXgyxYwRncnu6eNdS8EFm7k', argv[3])
+        user.joinRoom('3hCrJWK32xwSQr5xq8eBWSDiHuVyJoPrUPJd6dNWEanA', argv[3])
 
     print(user.invite)
     try:

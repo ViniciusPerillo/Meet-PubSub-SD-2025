@@ -78,17 +78,20 @@ class AudioManager():
 
     def input_callback(self, indata, frames, time, status):
         """Callback de captura de áudio"""
+        indata[(indata >= -500) & (indata <= 500)] = 0
+        print(indata)
         self.user().publisher.send_multipart([b'audio', self.user().username.encode('utf-8'), self.encode(indata.copy())])
 
     def output_callback(self, outdata, frames, time, status):
         """Callback de reprodução de áudio com mixagem"""
         try:
-            mix = np.zeros((frames, CHANNELS), dtype=np.float32)
+            mix = np.zeros((frames, CHANNELS), dtype=np.int16)
             count = 0
             
             # Processa todos os chunks disponíveis
             while True:
                 chunk = self.audio_queue.get_nowait().reshape((frames, CHANNELS))
+                #if 
                 mix += chunk[:frames]  # Garante tamanho correto
                 count += 1
         except queue.Empty:
@@ -96,8 +99,8 @@ class AudioManager():
         
         # Prevenção de clipping
         if count > 0:
-            mix /= count
-            mix = np.clip(mix, -1.0, 1.0)  * 32767
+            mix //= count
+            mix = np.clip(mix, -32768, 32767)
         
         outdata[:] = mix.astype(DTYPE)
 
