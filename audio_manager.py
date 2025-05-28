@@ -1,6 +1,6 @@
 import numpy as np
 import sounddevice as sd
-from pyogg import OpusEncoder, OpusDecoder
+import pyogg
 import zmq
 import threading
 import queue
@@ -8,24 +8,24 @@ import pickle
 from time import sleep
 import weakref
 
-from user import User
+#from user import User
 
 # Configurações
 SAMPLE_RATE = 16000
-CHUNK = 640
+CHUNK = 320
 DTYPE  = 'float32'
 CHANNELS = 1
 
 class AudioManager():
-    def __init__(self, user: User):
+    def __init__(self, user):
         self.user = weakref.ref(user)
 
-        self.encoder = OpusEncoder()
-        self.encoder.set_application("voip")  # Modo de baixa latência
+        self.encoder = pyogg.OpusEncoder()
+        self.encoder.set_application("voip")
         self.encoder.set_sampling_frequency(SAMPLE_RATE)
         self.encoder.set_channels(CHANNELS)
         
-        self.decoder = OpusDecoder()
+        self.decoder = pyogg.OpusDecoder()
         self.decoder.set_channels(CHANNELS)
         self.decoder.set_sampling_frequency(SAMPLE_RATE)
 
@@ -36,14 +36,24 @@ class AudioManager():
         return self.encoder.encode(audio.tobytes())
 
     def decode(self, data: bytes) -> np.ndarray:
-        """Descompacta bytes para áudio."""
-        decoded_bytes = self.decoder.decode(data)
-        return np.frombuffer(decoded_bytes, dtype=np.float32)
+        decoded_bytes = self.decoder.decode(bytearray(data))
+        audio = np.frombuffer(decoded_bytes, dtype=np.float32)
+        
+        if audio.size != CHUNK * CHANNELS:
+            # Corrigir tamanho com padding ou truncamento
+            if audio.size < CHUNK * CHANNELS:
+                pad = np.zeros(CHUNK * CHANNELS - audio.size, dtype=np.float32)
+                audio = np.concatenate([audio, pad])
+            else:
+                audio = audio[:CHUNK * CHANNELS]
+
+        return audio.reshape((CHUNK, CHANNELS))
+
 
     def setup_audio(self):
         # Configura captura de áudio
         self.input_stream = sd.InputStream(
-            sample_rate=SAMPLE_RATE,
+            samplerate=SAMPLE_RATE,
             blocksize=CHUNK,
             dtype= DTYPE ,
             channels=CHANNELS,
@@ -52,9 +62,9 @@ class AudioManager():
         
         # Configura reprodução de áudio
         self.output_stream = sd.OutputStream(
-            sample_rate=SAMPLE_RATE,
+            samplerate=SAMPLE_RATE,
             blocksize=CHUNK,
-            dtype =DTYPE ,
+            dtype= DTYPE ,
             channels=CHANNELS,
             callback=self.output_callback
         )
@@ -70,7 +80,7 @@ class AudioManager():
 
     def input_callback(self, indata, frames, time, status):
         """Callback de captura de áudio"""
-        self.user.publisher.send_multipart([b'audio', self.user.username.encode('utf-8'), self.encode(indata.copy())])
+        self.user().publisher.send_multipart([b'audio', self.user().username.encode('utf-8'), self.encode(indata.copy())])
         
         # # Adiciona áudio local na mixagem (opcional)
         # self.audio_queue.put(indata.copy())
@@ -91,11 +101,15 @@ class AudioManager():
         
         # Prevenção de clipping
         if count > 0:
-            mix /= self.user.peers
+            mix /= count
             mix = np.clip(mix, -1.0, 1.0)
         
         outdata[:] = mix
 
     def receive_audio(self, data: bytes):
         audio = self.decode(data)
+
+        if np.any(np.isnan(audio)) or np.any(np.isinf(audio)):
+            return
+
         self.audio_queue.put(audio)

@@ -14,8 +14,13 @@ def main():
     print(user.invite)
     try:
         user.listeningPubs()
-    except KeyboardInterrupt:
-        pass
+    except Exception as e:
+        user.exitRoom()
+        user.close()
+        raise e
+
 
     user.exitRoom()
     user.close()
+
+main()
