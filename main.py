@@ -1,16 +1,21 @@
-from User import User
-from time import sleep
+from user import User
+import sys
 
-user = User('ifood')
+def main():
+    argv = sys.argv
 
-user.createRoom('123')
+    user = User(argv[1])
 
-try: 
+    if '-c' in argv:
+        user.createRoom(argv[3])
+    elif '-e' in argv:
+        user.joinRoom('3hCrJWK32xwQFXwhsvAdFcXgyxYwRncnu6eNdS8EFm7k', argv[3])
+
     print(user.invite)
-    while True:
-        user.publisher.send_multipart([b'text', user.username.encode('utf-8'), b'rede'])
-        sleep(5)
+    try:
+        user.listeningPubs()
+    except KeyboardInterrupt:
+        pass
 
-    
-except KeyboardInterrupt:
     user.exitRoom()
+    user.close()

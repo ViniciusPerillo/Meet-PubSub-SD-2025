@@ -2,3 +2,4 @@ pyzmq
 pyaudio
 numpy
 base58
+sounddevice

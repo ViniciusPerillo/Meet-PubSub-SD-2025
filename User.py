@@ -7,6 +7,7 @@ from datetime import datetime
 from time import sleep
 
 from utils import *
+from audio_manager import AudioManager
 
 PUB_PORT= 5555
 ROUTER_PORT= 6666
@@ -43,6 +44,9 @@ class User:
         self.subscriber.setsockopt_string(zmq.SUBSCRIBE, 'audio')
         self.subscriber.setsockopt_string(zmq.SUBSCRIBE, 'video')
 
+        self.audio_manager = AudioManager(self)
+
+
         self.ipv6 = get_ipv6()
         self.lock = threading.Lock()
         self.username = username
@@ -54,7 +58,9 @@ class User:
         self.invite = ''
         self.password = ''
 
-    
+    def close(self):
+        self.publisher.close(1)
+        self.subscriber.close(1)
 
     def _create_invite_code(self):
         #self.room = random.randint(0, 65535) if self.room == None else self.room
@@ -127,13 +133,17 @@ class User:
 
         dealer.close(1)
     
-    def createRoom(self, password: str= ''):
+    def _enterRoom(self):
         self.on_room = True
+        self._create_invite_code()
+        threading.Thread(target=self._inviteListener, daemon=True).start()
+        self.audio_manager.setup_audio()
+
+    def createRoom(self, password: str= ''):
         self.password = password
         self.peers_addr.append(self.ipv6)
         self.peers += 1
-        self._create_invite_code()
-        threading.Thread(target=self._inviteListener, daemon=True).start()
+        self._enterRoom()
 
     def joinRoom(self, invite: str, password: str):
         ip, room = self._read_invite_code(invite)
@@ -144,9 +154,7 @@ class User:
             pass
         else:
             self.room = room
-            self.on_room = True
-            self._create_invite_code()
-            threading.Thread(target=self._inviteListener, daemon=True).start()
+            self._enterRoom()
 
     def exitRoom(self):
         for ip in self.peers_addr[1:]:
@@ -160,6 +168,8 @@ class User:
         self.on_room = False
         self.invite = ''
         self.password = ''
+        
+        self.audio_manager.stop()
 
     def _connectPub(self, ip: str):
         self.subscriber.connect(f'tcp://[{ip}]:{PUB_PORT}')
@@ -194,6 +204,8 @@ class User:
                     print(f'{datetime.now().strftime("%d/%m/%Y, %H:%M")}: {username.decode("utf-8")} saiu da sala')
             elif topic == b'text':
                 print(f'{datetime.now().strftime("%d/%m/%Y, %H:%M")} - {username.decode("utf-8")}:  {msg.decode("utf-8")}')
+            elif topic == b'audio':
+                self.audio_manager.receive_audio(msg)    
 
             
 
