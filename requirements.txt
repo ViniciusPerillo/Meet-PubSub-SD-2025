@@ -1,1 +1,4 @@
 pyzmq
+pyaudio
+numpy
+base58
