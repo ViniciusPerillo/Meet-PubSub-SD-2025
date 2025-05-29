@@ -78,8 +78,9 @@ class AudioManager():
 
     def input_callback(self, indata, frames, time, status):
         """Callback de captura de áudio"""
-        indata[(indata >= -500) & (indata <= 500)] = 0
-        self.user().publisher.send_multipart([b'audio', self.user().username.encode('utf-8'), self.encode(indata.copy())])
+        indata[(indata >= -300) & (indata <=300)] = 0
+        with self.user().lock:
+            self.user().publisher.send_multipart([b'audio', self.user().username.encode('utf-8'), self.encode(indata.copy())])
 
     def output_callback(self, outdata, frames, time, status):
         """Callback de reprodução de áudio com mixagem"""

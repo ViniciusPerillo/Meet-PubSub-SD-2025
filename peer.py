@@ -182,12 +182,6 @@ class Peer:
 
         self._enterRoom()
 
-    def disconnectByIPs(self, ips: list[str]):
-        for ip in ips:
-            self._disconnectPub(ip)
-
-        self.exitRoom()
-
     def _connectPub(self, ip: str):
         self.subscriber.connect(f'tcp://[{ip}]:{PUB_PORT}')
         with self.lock:
@@ -207,7 +201,8 @@ class Peer:
     def listeningPubs(self):
         
         while self.on_room:
-            topic, username, msg = self.subscriber.recv_multipart()
+            parts = self.subscriber.recv_multipart()
+            topic, username, msg = parts
 
             if topic == b'status':
                 status = bool(int(msg[-1]))
@@ -224,7 +219,7 @@ class Peer:
             elif topic == b'audio':
                 self.audio_manager.receive_audio(msg)
             elif topic == b'video':
-                self.video_manager.output_callback(username.decode("utf-8"), msg)
+                self.video_manager.recieve_video(username.decode("utf-8"), msg)
 
             
 
