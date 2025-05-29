@@ -11,8 +11,8 @@ import weakref
 #from user import User
 
 # Configurações
-SAMPLE_RATE = 16000
-CHUNK = 320
+SAMPLE_RATE = 24000
+CHUNK = 960
 DTYPE  = 'int16'
 CHANNELS = 1
 
@@ -78,7 +78,7 @@ class AudioManager():
 
     def input_callback(self, indata, frames, time, status):
         """Callback de captura de áudio"""
-        indata[(indata >= -500) & (indata <= 500)] = 0
+        indata[(indata >= -500) & (indata <= 500)] = 0 
         print(indata)
         self.user().publisher.send_multipart([b'audio', self.user().username.encode('utf-8'), self.encode(indata.copy())])
 
