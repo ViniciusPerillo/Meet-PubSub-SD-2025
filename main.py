@@ -2,7 +2,7 @@ from peer import Peer
 import sys
 
 def main():
-    argv = sys.argv
+    argv = ['', 'vini', '-i', '2804:14d:8084:a679::1001']
 
     user = Peer('vini')
 
@@ -17,11 +17,12 @@ def main():
         print(user.invite)
         user.listeningPubs()
     except Exception as e:
-        if '-c' or '-e':
+        if '-c' in argv or '-e' in argv:
             user.exitRoom()
             user.close()
-        elif '-i':
+        elif '-i' in argv:
             user.disconnectByIPs()
+            user.close()
         raise e
 
 
