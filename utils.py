@@ -1,23 +1,24 @@
 import socket
+import ipaddress
 
 def get_ipv6():
     hostname = socket.gethostname()
-    addrs = socket.getaddrinfo(hostname, None, socket.AF_INET6)
-    for addr in addrs:
-        ip = addr[4][0]
-        if ip[0] == '2' or ip[0] == '3':
-            return ip
+    try:
+        addrs = socket.getaddrinfo(hostname, None, socket.AF_INET6)
+        for addr in addrs:
+            ip = addr[4][0]
+            ip_obj = ipaddress.IPv6Address(ip)
+            if ip_obj.is_global:
+                return ip
+    except socket.gaierror:
+        pass
+    return None
         
 def convert_ipv6_str_to_bin(ip_str: str) -> int:
-    list_sec = [f'{sec:0>4}' for sec in ip_str.split(':')]
-    ip_bin = int(''.join(list_sec), 16)
-
-    return ip_bin
+    return int(ipaddress.IPv6Address(ip_str))
 
 def convert_bin_to_ipv6_str(ip_bin: int) -> str:
-   list_sec = [hex(ip_bin)[i:i+4] for i in range(2,34,4)]
-   return ':'.join(list_sec)
-
+    return str(ipaddress.IPv6Address(ip_bin))
 
 def convert_ipv6_list_to_bin(list_ips_str: list[str]) -> int:
     list_sec = []

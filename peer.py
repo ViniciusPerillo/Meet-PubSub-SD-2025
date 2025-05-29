@@ -176,6 +176,18 @@ class Peer:
         self.audio_manager.stop()
         self.video_manager.stop()
 
+    def connectByIPs(self, ips: list[str]):
+        for ip in ips:
+            self._connectPub(ip)
+
+        self._enterRoom()
+
+    def disconnectByIPs(self, ips: list[str]):
+        for ip in ips:
+            self._disconnectPub(ip)
+
+        self.exitRoom()
+
     def _connectPub(self, ip: str):
         self.subscriber.connect(f'tcp://[{ip}]:{PUB_PORT}')
         with self.lock:
