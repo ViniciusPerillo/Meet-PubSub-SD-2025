@@ -172,6 +172,14 @@ class Peer:
         
         self.audio_manager.stop()
 
+    def connectByIPs(self, ips: list[str]):
+        for ip in ips:
+            self._connectPub(ip)
+
+    def disconnectByIPs(self, ips: list[str]):
+        for ip in ips:
+            self._connectPub(ip)
+
     def _connectPub(self, ip: str):
         self.subscriber.connect(f'tcp://[{ip}]:{PUB_PORT}')
         with self.lock:

@@ -78,8 +78,7 @@ class AudioManager():
 
     def input_callback(self, indata, frames, time, status):
         """Callback de captura de áudio"""
-        indata[(indata >= -500) & (indata <= 500)] = 0 
-        print(indata)
+        indata[(indata >= -500) & (indata <= 500)] = 0
         self.user().publisher.send_multipart([b'audio', self.user().username.encode('utf-8'), self.encode(indata.copy())])
 
     def output_callback(self, outdata, frames, time, status):
