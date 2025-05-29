@@ -4,8 +4,9 @@ import threading
 import queue 
 from datetime import datetime
 import time
-from peer import Peer
+from peer import *
 import peer
+
 
 class App(ctk.CTk):
     def __init__(self):
@@ -83,7 +84,7 @@ class App(ctk.CTk):
             self.status_connection.configure(text="")
             self.show_room()
             self.display_on_chat(f"Você criou a sala. Convite: {self.user_instance.invite} | Senha: {self.user_instance.password}", is_status=True)
-            self.start_user_listeners()
+            self.listeners()
 
     def join_room_action(self):
             username = self.username_entry.get()
@@ -103,7 +104,7 @@ class App(ctk.CTk):
                     self.show_room()
                     self.room_info.configure(text="")
                     self.display_on_chat(f"Você entrou na sala: {self.user_instance.room} | Senha: {self.user_instance.password}", is_status=True)
-                    self.start_user_listeners()
+                    self.listeners()
                 else:
                     self.status_connection.configure(text="Falha ao entrar na sala. Verifique o código/senha.")
                     self.user_instance = None
@@ -150,10 +151,39 @@ class App(ctk.CTk):
                 self.message_queue.put(f"{timestamp} - Você: {message}")
                 self.message_entry.delete(0, ctk.END)
 
-    def start_user_listeners(self):   
-        teste = peer.listeningPubs()  
-        print(teste) 
-        return 
+    def listeners(self):  
+        def listeners(self):
+            while self.user_instance and self.user_instance.on_room:
+                try:
+                    topic, username_bytes, msg = self.user_instance.subscriber.recv_multipart(flags=zmq.NOBLOCK) 
+                            
+                    timestamp = datetime.now().strftime("%H:%M")
+                    username = username_bytes.decode('utf-8')
+                            
+                    if topic == b'text':
+                        message = msg.decode('utf-8')
+                        #if username != self.user_instance.username:
+                        self.message_queue.put(f"{timestamp} - {username}: {message}")
+                    elif topic == b'status':
+                            status_val = bool(int(msg[-1]))
+                            ip_affected = msg[:-1].decode('utf-8')
+                            status_msg = f"{username} {'entrou na' if status_val else 'saiu da'} sala."
+                            #if ip_affected != self.user_instance.ipv6: 
+                            self.message_queue.put(f"STATUS: {status_msg}")
+                            # COLOCAR AUDIO E VIDEO
+                            
+                except zmq.Again: 
+                    time.sleep(0.05)
+                    continue
+                except Exception as e:
+                    if self.user_instance and self.user_instance.on_room: 
+                        self.message_queue.put(f"ERRO DE REDE: {e}")
+                    break
+
+        listener_thread = threading.Thread(target=self.listeners, daemon=True)
+        listener_thread.start()
+
+        
 
     def process_message_queue(self):
         try:
