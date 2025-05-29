@@ -6,8 +6,7 @@ import threading
 class VideoManager():
     def __init__(self, user):
         self.user = weakref.ref(user)
-        self.frames = {}
-        
+        self.frame = 0
 
     def _frame_encode(self, frame: np.typing.NDArray[np.uint8]) -> bytes:
         return cv2.imencode('.jpg', frame)[1].tobytes()
@@ -15,8 +14,6 @@ class VideoManager():
     def _frame_decode(self, bytes_frame: bytes) -> np.typing.NDArray[np.uint8]:
         return cv2.imdecode(np.frombuffer(bytes_frame, np.uint8), cv2.IMREAD_COLOR)
 
-
-        
 
     def setup_video(self):
         self.cam = cv2.VideoCapture(0)
@@ -30,11 +27,12 @@ class VideoManager():
     def input_callback(self):
         while self.user().on_room:
             ret, frame = self.cam.read()
+            self.frame = frame
             bytes_frame = self._frame_encode(frame)
             with self.user().lock:
                 if ret:
                     self.user().publisher.send_multipart([b'video', self.user().username.encode('utf-8'), bytes_frame])
-            self.frame = frame
+            
 
     def recieve_video(self, user: str, bytes_frame: bytes):
         cv2.imshow(user, self._frame_decode(bytes_frame))

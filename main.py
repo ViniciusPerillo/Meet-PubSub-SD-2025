@@ -2,7 +2,7 @@ from peer import Peer
 import sys
 
 def main():
-    argv = ['', 'vini', '-i', '::1']
+    argv = ['', 'vini', '-i', 'fdfd::1af4:a441']
 
     user = Peer('vini')
 

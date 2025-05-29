@@ -11,8 +11,8 @@ import weakref
 #from user import User
 
 # Configurações
-SAMPLE_RATE = 24000
-CHUNK = 960
+SAMPLE_RATE = 16000
+CHUNK = 640
 DTYPE  = 'int16'
 CHANNELS = 1
 
