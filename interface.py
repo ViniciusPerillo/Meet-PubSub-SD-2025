@@ -4,14 +4,16 @@ import threading
 import queue 
 from datetime import datetime
 import time
+
 from peer import *
+from video_manager import VideoManager
 
 class App(ctk.CTk):
     def __init__(self):
         super().__init__()
 
         self.title("O Whatsapp 3")
-        self.geometry("600x500")
+        self.geometry("1920x1080")
 
         self.user_instance: Peer = None
         self.message_queue = queue.Queue()
@@ -42,19 +44,29 @@ class App(ctk.CTk):
         #Tela da Sala
         self.room = ctk.CTkFrame(self)
 
-        self.room_info = ctk.CTkLabel(self.room, text="")
+        #Chat
+        self.room_chat = ctk.CTkFrame(self.room, width=400)
+        self.room_chat.pack(side="right", fill="y")
+
+        self.room_info = ctk.CTkLabel(self.room_chat, text="")
         self.room_info.pack(pady=5)
 
-        self.chat_display = ctk.CTkTextbox(self.room, width=550, height=300, state="disabled")
+        self.chat_display = ctk.CTkTextbox(self.room_chat, width=350, height=300, state="disabled")
         self.chat_display.pack(pady=10, padx=10)
 
-        self.message_entry = ctk.CTkEntry(self.room, placeholder_text="Digite sua mensagem...", width=450)
+        self.message_entry = ctk.CTkEntry(self.room_chat, placeholder_text="Digite sua mensagem...", width=250)
         self.message_entry.pack(side=ctk.LEFT, pady=10, padx=(10,0))
-        self.message_entry.bind("<Return>", self.send_message)
+        #self.message_entry.bind("<Return>", self.send_message)
 
-        self.send_button = ctk.CTkButton(self.room, text="Enviar", command=self.send_message, width=80)
+        self.send_button = ctk.CTkButton(self.room_chat, text="Enviar", command=self.send_message, width=80)
         self.send_button.pack(side=ctk.LEFT, pady=10, padx=10)
-        
+
+        #Vídeo
+        self.video_widgets = {}
+        self.video_display = ctk.CTkFrame(self.room)
+        self.video_display.pack(side="left", fill="both", expand=True)
+
+
         self.exit_button = ctk.CTkButton(self.room, text="Sair da Sala", command=self.exit_room)
         self.exit_button.pack(pady=10)
 
@@ -134,15 +146,19 @@ class App(ctk.CTk):
                             
                     if topic == b'text':
                         message = msg.decode('utf-8')
+
                         if username != self.user_instance.username:
                             self.message_queue.put(f"{timestamp} - {username}: {message}")
                     elif topic == b'status':
                             status_val = bool(int(msg[-1]))
                             ip_affected = msg[:-1].decode('utf-8')
                             status_msg = f"{username} {'entrou na' if status_val else 'saiu da'} sala."
+
                             if ip_affected != self.user_instance.ipv6: 
                                 self.message_queue.put(f"STATUS: {status_msg}")
-                            # COLOCAR AUDIO E VIDEO
+                    elif topic == b'video':
+                            self.user_instance.video_manager.recieve_video(username, msg)
+
                             
                 except zmq.Again: 
                     time.sleep(0.05)
@@ -162,10 +178,10 @@ class App(ctk.CTk):
         finally:
             self.after(100, self.process_message_queue) # 100ms
 
-    #Fechar
+    #Fechar CONCERTAR ISSO AQUI
     def closing_all(self):
         if self.user_instance and self.user_instance.on_room:
-            self.user_instance.disconnectByIPs(self.user_instance.connected_ips)
+            self.disconnectByIPs(self.user_instance.connected_ips)
         self.destroy()
     
 
