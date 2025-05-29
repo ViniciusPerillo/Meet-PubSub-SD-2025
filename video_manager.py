@@ -32,7 +32,8 @@ class VideoManager():
             ret, frame = self.cam.read()
             bytes_frame = self._frame_encode(frame)
             with self.user().lock:
-                self.user().publisher.send_multipart([b'video', self.user().username.encode('utf-8'), bytes_frame])
+                if ret:
+                    self.user().publisher.send_multipart([b'video', self.user().username.encode('utf-8'), bytes_frame])
             self.frame = frame
 
     def recieve_video(self, user: str, bytes_frame: bytes):
