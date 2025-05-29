@@ -220,9 +220,10 @@ class Peer:
                 self.audio_manager.receive_audio(msg)
             elif topic == b'video':
                 self.video_manager.recieve_video(username.decode("utf-8"), msg)
-
             
-
+    def send_text_message(self, message: str):
+        if self.on_room:
+            self.publisher.send_multipart([b'text', self.username.encode('utf-8'), message.encode('utf-8')]) 
         
 
 
