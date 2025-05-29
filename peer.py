@@ -8,6 +8,7 @@ from time import sleep
 
 from utils import *
 from audio_manager import AudioManager
+from video_manager import VideoManager
 
 PUB_PORT= 5555
 ROUTER_PORT= 6666
@@ -47,6 +48,7 @@ class Peer:
         self.subscriber.setsockopt_string(zmq.SUBSCRIBE, 'video')
 
         self.audio_manager = AudioManager(self)
+        self.video_manager = VideoManager(self)
 
 
         self.ipv6 = get_ipv6()
@@ -139,6 +141,7 @@ class Peer:
         sleep(0.5)
         threading.Thread(target=self._inviteListener, daemon=True).start()
         self.audio_manager.setup_audio()
+        self.video_manager.setup_video()
 
     def createRoom(self, password: str= ''):
         self.password = password
@@ -171,6 +174,7 @@ class Peer:
         self.password = ''
         
         self.audio_manager.stop()
+        self.video_manager.stop()
 
     def _connectPub(self, ip: str):
         self.subscriber.connect(f'tcp://[{ip}]:{PUB_PORT}')
@@ -206,7 +210,9 @@ class Peer:
             elif topic == b'text':
                 print(f'{datetime.now().strftime("%d/%m/%Y, %H:%M")} - {username.decode("utf-8")}:  {msg.decode("utf-8")}')
             elif topic == b'audio':
-                self.audio_manager.receive_audio(msg)    
+                self.audio_manager.receive_audio(msg)
+            elif topic == b'video':
+                self.video_manager.output_callback(username.decode("utf-8"), msg)
 
             
 
