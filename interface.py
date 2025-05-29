@@ -13,7 +13,7 @@ class App(ctk.CTk):
         super().__init__()
 
         self.title("O Whatsapp 3")
-        self.geometry("1920x1080")
+        self.geometry("400x500")
 
         self.user_instance: Peer = None
         self.message_queue = queue.Queue()
