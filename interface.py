@@ -4,7 +4,8 @@ import threading
 import queue 
 from datetime import datetime
 import time
-from user_local import User
+from peer import Peer
+import peer
 
 class App(ctk.CTk):
     def __init__(self):
@@ -13,7 +14,7 @@ class App(ctk.CTk):
         self.title("O Whatsapp 3")
         self.geometry("600x500")
 
-        self.user_instance: User = None
+        self.user_instance: Peer = None
         self.message_queue = queue.Queue()
 
         # Tela de Conexão  
@@ -76,7 +77,7 @@ class App(ctk.CTk):
                 self.status_connection.configure(text="Por favor, insira um nome de usuário e senha.")
                 return
             
-            self.user_instance = User(username)
+            self.user_instance = Peer(username)
             self.user_instance.createRoom(password=password)
 
             self.status_connection.configure(text="")
@@ -93,7 +94,7 @@ class App(ctk.CTk):
                 self.status_connection.configure(text="Nome de usuário, senha e código de convite são obrigatórios.")
                 return
 
-            self.user_instance = User(username)
+            self.user_instance = Peer(username)
             try:
                 self.user_instance.joinRoom(invite_code, password=password)
 
@@ -149,7 +150,9 @@ class App(ctk.CTk):
                 self.message_queue.put(f"{timestamp} - Você: {message}")
                 self.message_entry.delete(0, ctk.END)
 
-    def start_user_listeners(self):      
+    def start_user_listeners(self):   
+        teste = peer.listeningPubs()  
+        print(teste) 
         return 
 
     def process_message_queue(self):
@@ -168,3 +171,7 @@ class App(ctk.CTk):
     
 
 
+"""    def send_text_message(self, message: str):
+        if self.on_room:
+            self.publisher.send_multipart([b'text', self.username.encode('utf-8'), message.encode('utf-8')]) 
+"""

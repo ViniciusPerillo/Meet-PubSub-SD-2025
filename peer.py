@@ -7,6 +7,7 @@ from datetime import datetime
 from time import sleep
 
 from utils import *
+from audio_manager import AudioManager
 
 PUB_PORT= 5555
 ROUTER_PORT= 6666
@@ -17,7 +18,7 @@ class InvalidInviteCode(Exception):
 class WrongPassword(Exception):
     pass
 
-class User:
+class Peer:
     context: zmq.Context
     publisher: zmq.Socket
     subscriber: zmq.Socket
@@ -36,12 +37,17 @@ class User:
         self.publisher = self.context.socket(zmq.PUB)
         self.publisher.setsockopt(zmq.IPV6, 1)
         self.publisher.bind(f'tcp://[::]:{PUB_PORT}')
+        self.publisher.setsockopt(zmq.SNDHWM, 1)
         self.subscriber = self.context.socket(zmq.SUB)
         self.subscriber.setsockopt(zmq.IPV6, 1)
+        self.subscriber.setsockopt(zmq.RCVHWM, 1)
         self.subscriber.setsockopt_string(zmq.SUBSCRIBE, 'status')
         self.subscriber.setsockopt_string(zmq.SUBSCRIBE, 'text')
         self.subscriber.setsockopt_string(zmq.SUBSCRIBE, 'audio')
         self.subscriber.setsockopt_string(zmq.SUBSCRIBE, 'video')
+
+        self.audio_manager = AudioManager(self)
+
 
         self.ipv6 = get_ipv6()
         self.lock = threading.Lock()
@@ -54,7 +60,9 @@ class User:
         self.invite = ''
         self.password = ''
 
-    
+    def close(self):
+        self.publisher.close(1)
+        self.subscriber.close(1)
 
     def _create_invite_code(self):
         #self.room = random.randint(0, 65535) if self.room == None else self.room
@@ -89,9 +97,7 @@ class User:
             if password == self.password:
                 bytes_ips = str(self.peers_addr)[1:-1].replace("'","").encode('utf-8')
                 router.send_multipart([dealer_id, b'', b'', bytes_ips])
-                with self.lock:
-                    self.peers_addr.append(ip)
-
+                self._connectPub(ip)
                 self.publisher.send_multipart([b'status', bytes_username, (ip + '1').encode('utf-8')])
             else:
                 router.send_multipart([b'', b'', b'wrong'])
@@ -127,14 +133,18 @@ class User:
 
         dealer.close(1)
     
-    def createRoom(self, password: str= ''):
+    def _enterRoom(self):
         self.on_room = True
+        self._create_invite_code()
+        sleep(0.5)
+        threading.Thread(target=self._inviteListener, daemon=True).start()
+        self.audio_manager.setup_audio()
+
+    def createRoom(self, password: str= ''):
         self.password = password
         self.peers_addr.append(self.ipv6)
         self.peers += 1
-        self._create_invite_code()
-        print(f"[DEBUG] Convite gerado: {self.invite} (IP: {self.ipv6}, Sala: {self.room})")
-        threading.Thread(target=self._inviteListener, daemon=True).start()
+        self._enterRoom()
 
     def joinRoom(self, invite: str, password: str):
         ip, room = self._read_invite_code(invite)
@@ -145,9 +155,7 @@ class User:
             pass
         else:
             self.room = room
-            self.on_room = True
-            self._create_invite_code()
-            threading.Thread(target=self._inviteListener, daemon=True).start()
+            self._enterRoom()
 
     def exitRoom(self):
         for ip in self.peers_addr[1:]:
@@ -161,6 +169,20 @@ class User:
         self.on_room = False
         self.invite = ''
         self.password = ''
+        
+        self.audio_manager.stop()
+
+    def connectByIPs(self, ips: list[str]):
+        for ip in ips:
+            self._connectPub(ip)
+
+        self._enterRoom()
+
+    def disconnectByIPs(self, ips: list[str]):
+        for ip in ips:
+            self._disconnectPub(ip)
+
+        self.exitRoom()
 
     def _connectPub(self, ip: str):
         self.subscriber.connect(f'tcp://[{ip}]:{PUB_PORT}')
@@ -195,12 +217,12 @@ class User:
                     print(f'{datetime.now().strftime("%d/%m/%Y, %H:%M")}: {username.decode("utf-8")} saiu da sala')
             elif topic == b'text':
                 print(f'{datetime.now().strftime("%d/%m/%Y, %H:%M")} - {username.decode("utf-8")}:  {msg.decode("utf-8")}')
+            elif topic == b'audio':
+                self.audio_manager.receive_audio(msg)    
 
     def send_text_message(self, message: str):
         if self.on_room:
-            self.publisher.send_multipart([b'text', self.username.encode('utf-8'), message.encode('utf-8')]) 
-
- 
+            self.publisher.send_multipart([b'text', self.username.encode('utf-8'), message.encode('utf-8')])         
 
         
 
@@ -210,5 +232,3 @@ class User:
 
         
         
-
-
