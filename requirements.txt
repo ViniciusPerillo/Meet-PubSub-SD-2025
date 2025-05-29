@@ -4,3 +4,5 @@ numpy
 base58
 sounddevice
 git+https://github.com/TeamPyOgg/PyOgg
+opencv-python
+customtkinter
