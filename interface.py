@@ -5,8 +5,6 @@ import queue
 from datetime import datetime
 import time
 from peer import *
-import peer
-
 
 class App(ctk.CTk):
     def __init__(self):
@@ -27,23 +25,16 @@ class App(ctk.CTk):
         self.username_entry = ctk.CTkEntry(self.connection, placeholder_text="Seu nome")
         self.username_entry.pack(pady=5)
 
-        #Proteger a sala com senha(pra entrar precisa do código de convite + senha)
-        #Conferir 
-        self.password_label = ctk.CTkLabel(self.connection, text="Senha da Sala")
-        self.password_label.pack(pady=(10,0))
-        self.password_entry = ctk.CTkEntry(self.connection)
-        self.password_entry.pack(pady=5)
+        #Input da lista de IPs 
+        self.ips_label = ctk.CTkLabel(self.connection, text="Endereços IPs(separados por vírgula)")
+        self.ips_label.pack(pady=(10,0))
 
-        self.create_room_button = ctk.CTkButton(self.connection, text="Criar Sala", command=self.create_room_action)
+        self.ips_entry = ctk.CTkEntry(self.connection, width=350)
+        self.ips_entry.pack(pady=5)
+        # self.ips_entry.insert(0, "::1") #teste 
+
+        self.create_room_button = ctk.CTkButton(self.connection, text="Conectar", command=self.connection_action)
         self.create_room_button.pack(pady=10)
-
-        self.invite_code_label = ctk.CTkLabel(self.connection, text="Código de Convite")
-        self.invite_code_label.pack(pady=(10,0))
-        self.invite_code_entry = ctk.CTkEntry(self.connection)
-        self.invite_code_entry.pack(pady=5)
-
-        self.join_room_button = ctk.CTkButton(self.connection, text="Entrar na Sala", command=self.join_room_action)
-        self.join_room_button.pack(pady=10)
 
         self.status_connection = ctk.CTkLabel(self.connection, text="")
         self.status_connection.pack(pady=10)
@@ -70,55 +61,36 @@ class App(ctk.CTk):
         self.process_message_queue()
         self.protocol("WM_DELETE_WINDOW", self.closing_all)
 
-    def create_room_action(self):
-            username = self.username_entry.get()
-            password = self.password_entry.get()
+    def connection_action(self):
+        username = self.username_entry.get()
+        ips = self.ips_entry.get()
+        list_ips = []
 
-            if not username or not password:
-                self.status_connection.configure(text="Por favor, insira um nome de usuário e senha.")
-                return
-            
+        if not username or not ips:
+            self.status_connection.configure(text="Preencha todos os campos")
+            return
+        
+        try:
+            list_ips = [ip.strip() for ip in ips.split(",") if ip.strip()]
             self.user_instance = Peer(username)
-            self.user_instance.createRoom(password=password)
+            self.user_instance.connectByIPs(list_ips)
 
             self.status_connection.configure(text="")
             self.show_room()
-            self.display_on_chat(f"Você criou a sala. Convite: {self.user_instance.invite} | Senha: {self.user_instance.password}", is_status=True)
-            self.listeners()
-
-    def join_room_action(self):
-            username = self.username_entry.get()
-            password = self.password_entry.get()
-            invite_code = self.invite_code_entry.get()
-
-            if not username or not invite_code or not password:
-                self.status_connection.configure(text="Nome de usuário, senha e código de convite são obrigatórios.")
-                return
-
-            self.user_instance = Peer(username)
-            try:
-                self.user_instance.joinRoom(invite_code, password=password)
-
-                if self.user_instance.on_room:
-                    self.status_connection.configure(text="")
-                    self.show_room()
-                    self.room_info.configure(text="")
-                    self.display_on_chat(f"Você entrou na sala: {self.user_instance.room} | Senha: {self.user_instance.password}", is_status=True)
-                    self.listeners()
-                else:
-                    self.status_connection.configure(text="Falha ao entrar na sala. Verifique o código/senha.")
-                    self.user_instance = None
-            except Exception as e: 
-                self.status_connection.configure(text=f"Erro: {str(e)}")
-                self.user_instance = None
+            self.room_info.configure(text=f"Conectado como: {username} | IP: {self.user_instance.ipv6}") 
+            self.display_on_chat(f"Conectado ao grupo com IPs: {list_ips}", is_status=True)
+            self.start_user_listeners()
+            
+        except Exception as e:
+            self.status_connection.configure(text=f"Erro : {str(e)}")
+            self.user_instance = None
 
     def exit_room(self):
-
-        if self.user_instance and self.user_instance.on_room:
-            self.user_instance.exitRoom()
-        self.display_on_chat("Você saiu da sala.", is_status=True) 
+        self.user_instance.exitRoom()
         self.show_connection()
         self.user_instance = None 
+
+        self.display_on_chat("Você saiu da sala.", is_status=True)
 
     def show_connection(self):
         self.room.pack_forget()
@@ -151,8 +123,8 @@ class App(ctk.CTk):
                 self.message_queue.put(f"{timestamp} - Você: {message}")
                 self.message_entry.delete(0, ctk.END)
 
-    def listeners(self):  
-        def listeners(self):
+    def start_user_listeners(self):  
+        def listeners():
             while self.user_instance and self.user_instance.on_room:
                 try:
                     topic, username_bytes, msg = self.user_instance.subscriber.recv_multipart(flags=zmq.NOBLOCK) 
@@ -162,14 +134,14 @@ class App(ctk.CTk):
                             
                     if topic == b'text':
                         message = msg.decode('utf-8')
-                        #if username != self.user_instance.username:
-                        self.message_queue.put(f"{timestamp} - {username}: {message}")
+                        if username != self.user_instance.username:
+                            self.message_queue.put(f"{timestamp} - {username}: {message}")
                     elif topic == b'status':
                             status_val = bool(int(msg[-1]))
                             ip_affected = msg[:-1].decode('utf-8')
                             status_msg = f"{username} {'entrou na' if status_val else 'saiu da'} sala."
-                            #if ip_affected != self.user_instance.ipv6: 
-                            self.message_queue.put(f"STATUS: {status_msg}")
+                            if ip_affected != self.user_instance.ipv6: 
+                                self.message_queue.put(f"STATUS: {status_msg}")
                             # COLOCAR AUDIO E VIDEO
                             
                 except zmq.Again: 
@@ -180,10 +152,7 @@ class App(ctk.CTk):
                         self.message_queue.put(f"ERRO DE REDE: {e}")
                     break
 
-        listener_thread = threading.Thread(target=self.listeners, daemon=True)
-        listener_thread.start()
-
-        
+        threading.Thread(target=listeners, daemon=True).start()
 
     def process_message_queue(self):
         try:
@@ -196,7 +165,7 @@ class App(ctk.CTk):
     #Fechar
     def closing_all(self):
         if self.user_instance and self.user_instance.on_room:
-            self.user_instance.exitRoom()
+            self.user_instance.disconnectByIPs(self.user_instance.connected_ips)
         self.destroy()
     
 

@@ -8,6 +8,7 @@ from time import sleep
 
 from utils import *
 from audio_manager import AudioManager
+from video_manager import VideoManager
 
 PUB_PORT= 5555
 ROUTER_PORT= 6666
@@ -47,6 +48,7 @@ class Peer:
         self.subscriber.setsockopt_string(zmq.SUBSCRIBE, 'video')
 
         self.audio_manager = AudioManager(self)
+        self.video_manager = VideoManager(self)
 
 
         self.ipv6 = get_ipv6()
@@ -139,6 +141,7 @@ class Peer:
         sleep(0.5)
         threading.Thread(target=self._inviteListener, daemon=True).start()
         self.audio_manager.setup_audio()
+        self.video_manager.setup_video()
 
     def createRoom(self, password: str= ''):
         self.password = password
@@ -171,18 +174,13 @@ class Peer:
         self.password = ''
         
         self.audio_manager.stop()
+        self.video_manager.stop()
 
     def connectByIPs(self, ips: list[str]):
         for ip in ips:
             self._connectPub(ip)
 
         self._enterRoom()
-
-    def disconnectByIPs(self, ips: list[str]):
-        for ip in ips:
-            self._disconnectPub(ip)
-
-        self.exitRoom()
 
     def _connectPub(self, ip: str):
         self.subscriber.connect(f'tcp://[{ip}]:{PUB_PORT}')
@@ -203,7 +201,8 @@ class Peer:
     def listeningPubs(self):
         
         while self.on_room:
-            topic, username, msg = self.subscriber.recv_multipart()
+            parts = self.subscriber.recv_multipart()
+            topic, username, msg = parts
 
             if topic == b'status':
                 status = bool(int(msg[-1]))
@@ -218,12 +217,14 @@ class Peer:
             elif topic == b'text':
                 print(f'{datetime.now().strftime("%d/%m/%Y, %H:%M")} - {username.decode("utf-8")}:  {msg.decode("utf-8")}')
             elif topic == b'audio':
-                self.audio_manager.receive_audio(msg)    
+                self.audio_manager.receive_audio(msg)
+            elif topic == b'video':
+                self.video_manager.recieve_video(username.decode("utf-8"), msg)
 
+            
     def send_text_message(self, message: str):
         if self.on_room:
-            self.publisher.send_multipart([b'text', self.username.encode('utf-8'), message.encode('utf-8')])         
-
+            self.publisher.send_multipart([b'text', self.username.encode('utf-8'), message.encode('utf-8')]) 
         
 
 
