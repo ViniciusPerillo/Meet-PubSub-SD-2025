@@ -156,6 +156,8 @@ class App(ctk.CTk):
 
                             if ip_affected != self.user_instance.ipv6: 
                                 self.message_queue.put(f"STATUS: {status_msg}")
+                    elif topic == b'audio':
+                         self.user_instance.receive_audio(msg)
                     elif topic == b'video':
                             self.user_instance.video_manager.recieve_video(username, msg)
 
