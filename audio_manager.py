@@ -78,6 +78,7 @@ class AudioManager():
 
     def input_callback(self, indata, frames, time, status):
         """Callback de captura de áudio"""
+        
         indata[(indata >= -300) & (indata <=300)] = 0
         with self.user().lock:
             self.user().publisher.send_multipart([b'audio', self.user().username.encode('utf-8'), self.encode(indata.copy())])
@@ -106,8 +107,5 @@ class AudioManager():
 
     def receive_audio(self, data: bytes):
         audio = self.decode(data)
-
-        if np.any(np.isnan(audio)) or np.any(np.isinf(audio)):
-            return
 
         self.audio_queue.put(audio)

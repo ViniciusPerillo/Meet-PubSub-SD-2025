@@ -2,6 +2,7 @@ import cv2
 import weakref
 import numpy as np
 import threading
+from time import sleep
 
 class VideoManager():
     def __init__(self, user):
@@ -32,6 +33,8 @@ class VideoManager():
             with self.user().lock:
                 if ret:
                     self.user().publisher.send_multipart([b'video', self.user().username.encode('utf-8'), bytes_frame])
+            sleep(1/30)
+
             
 
     def recieve_video(self, user: str, bytes_frame: bytes):
