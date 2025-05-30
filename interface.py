@@ -150,16 +150,16 @@ class App(ctk.CTk):
                         if username != self.user_instance.username:
                             self.message_queue.put(f"{timestamp} - {username}: {message}")
                     elif topic == b'status':
-                            status_val = bool(int(msg[-1]))
-                            ip_affected = msg[:-1].decode('utf-8')
-                            status_msg = f"{username} {'entrou na' if status_val else 'saiu da'} sala."
+                        status_val = bool(int(msg[-1]))
+                        ip_affected = msg[:-1].decode('utf-8')
+                        status_msg = f"{username} {'entrou na' if status_val else 'saiu da'} sala."
 
-                            if ip_affected != self.user_instance.ipv6: 
-                                self.message_queue.put(f"STATUS: {status_msg}")
+                        if ip_affected != self.user_instance.ipv6: 
+                            self.message_queue.put(f"STATUS: {status_msg}")
                     elif topic == b'audio':
-                         self.user_instance.receive_audio(msg)
+                        self.user_instance.audio_manager.receive_audio(msg)
                     elif topic == b'video':
-                            self.user_instance.video_manager.recieve_video(username, msg)
+                        self.user_instance.video_manager.recieve_video(username, msg)
 
                             
                 except zmq.Again: 
@@ -183,7 +183,7 @@ class App(ctk.CTk):
     #Fechar CONCERTAR ISSO AQUI
     def closing_all(self):
         if self.user_instance and self.user_instance.on_room:
-            self.disconnectByIPs(self.user_instance.connected_ips)
+            self.exit_room()
         self.destroy()
     
 
